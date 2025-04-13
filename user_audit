@@ -1,0 +1,10 @@
+CREATE KEYSPACE IF NOT EXISTS audit_keyspace
+WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+
+CREATE TABLE IF NOT EXISTS audit_keyspace.user_audit (
+    id UUID PRIMARY KEY,
+    username TEXT,
+    action TEXT,
+    entity TEXT,
+    timestamp TIMESTAMP
+) WITH default_time_to_live = 31536000; -- 1 год
