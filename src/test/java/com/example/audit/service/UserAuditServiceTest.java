@@ -1,38 +1,39 @@
 package com.example.audit.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+
+import com.example.service.UserAuditService;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
 import com.example.Application;
 import com.example.model.UserAuditEvent;
-import com.example.service.UserAuditService;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.CassandraContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.time.Instant;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 @Testcontainers
 @SpringBootTest(classes = Application.class)
-public class UserAuditServiceTest {
+class UserAuditServiceTest {
 
   @Container
-  static CassandraContainer<?> cassandraContainer = new CassandraContainer<>("cassandra:4.1");
+  static final CassandraContainer<?> cassandra = new CassandraContainer<>("cassandra:4.1");
+
+  @DynamicPropertySource
+  static void cassandraProps(DynamicPropertyRegistry reg) {
+    reg.add("spring.cassandra.contact-points", cassandra::getHost);
+    reg.add("spring.cassandra.port", () -> cassandra.getMappedPort(9042));
+    reg.add("spring.cassandra.local-datacenter", () -> "datacenter1");
+  }
 
   @Autowired
-  UserAuditService auditService;
-
-  @BeforeAll
-  static void setup() {
-    System.setProperty("spring.cassandra.port",
-        String.valueOf(cassandraContainer.getMappedPort(9042)));
-  }
+  private UserAuditService auditService;
 
   @Test
   void testInsertAndRetrieveAudit() {
@@ -43,18 +44,17 @@ public class UserAuditServiceTest {
         "DELETE",
         "User deleted something suspicious"
     );
-
     auditService.saveAuditEvent(event);
-    var result = auditService.getAuditEventsForUser(userId);
 
+    List<UserAuditEvent> result = auditService.getAuditEventsForUser(userId);
     assertFalse(result.isEmpty());
     assertEquals("DELETE", result.get(0).getEventType());
   }
 
   @Test
   void testRetrieveEmptyAuditList() {
-    UUID nonexistentUserId = UUID.randomUUID();
-    var result = auditService.getAuditEventsForUser(nonexistentUserId);
-    assertTrue(result.isEmpty());
+    UUID nonexistentUser = UUID.randomUUID();
+    List<UserAuditEvent> empty = auditService.getAuditEventsForUser(nonexistentUser);
+    assertTrue(empty.isEmpty());
   }
 }

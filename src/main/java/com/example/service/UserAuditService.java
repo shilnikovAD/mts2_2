@@ -1,16 +1,16 @@
 package com.example.service;
 
-import com.example.model.UserAuditEvent;
-import org.springframework.stereotype.Service;
-import lombok.RequiredArgsConstructor;
-import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.cql.PreparedStatement;
-import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
-import java.util.List;
+import com.example.model.UserAuditEvent;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 
 @Service
 @RequiredArgsConstructor
@@ -35,13 +35,16 @@ public class UserAuditService {
     session.execute(bs);
   }
 
+
   public List<UserAuditEvent> getAuditEventsForUser(UUID userId) {
     PreparedStatement ps = session.prepare("""
-            SELECT * FROM my_keyspace.user_audit 
+            SELECT user_id, event_time, event_type, event_details
+            FROM my_keyspace.user_audit
             WHERE user_id = ?
         """);
 
-    ResultSet rs = session.execute(ps.bind(userId));
+    BoundStatement bs = ps.bind(userId);
+    ResultSet rs = session.execute(bs);
 
     List<UserAuditEvent> result = new ArrayList<>();
     for (Row row : rs) {
